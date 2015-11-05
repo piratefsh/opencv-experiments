@@ -416,18 +416,10 @@ def get_color_from_hue(hue):
 
     if hist[3]+hist[4] > 1200:
         return sc.PROP_COLOR_GREEN
-    elif hist[8]+hist[9] > 250:
+    elif hist[8]+hist[9] > 30:
         return sc.PROP_COLOR_PURPLE
     else:
         return sc.PROP_COLOR_RED
-
-
-    # if sum(hist[130:181]) > 750:
-    #     return sc.PROP_COLOR_PURPLE
-    # elif sum(hist[40:81]) > 750:
-    #     return sc.PROP_COLOR_GREEN
-    # else:
-    #     return sc.PROP_COLOR_RED
 
 def get_texture_from_hue(hue, contour_box):
     # for convenience
@@ -439,11 +431,13 @@ def get_texture_from_hue(hue, contour_box):
 
     # get a 20x20 square from each of the corners of the card, average values
     hue_bg = np.mean([
-        hue[0:20, 0:20], hue[card_h-20:card_h, card_w-20:card_w],
-        hue[0:20, card_w-20:card_w], hue[card_h-20:card_h, 0:20]])
+        hue[6:26, 6:26], hue[card_h-26:card_h-6, card_w-26:card_w-6],
+        hue[6:26, card_w-26:card_w-6], hue[card_h-26:card_h-6, 6:26]])
 
     # get a 20x20 square from the center of the shape, average values
     hue_center = np.mean(hue[y+h/2-10:y+h/2+10, x+w/2-10:x+w/2+10])
+
+    util.show(hue[y+h/2-10:y+h/2+10, x+w/2-10:x+w/2+10])
 
     # guess texture based on ratio of inside to outside hues
     hue_ratio = max(hue_bg, hue_center) / min(hue_bg, hue_center)
@@ -453,6 +447,45 @@ def get_texture_from_hue(hue, contour_box):
         return sc.PROP_TEXTURE_STRIPED
     else:
         return sc.PROP_TEXTURE_SOLID
+
+def get_texture_from_hue_val(hue, val, contour_box):
+    # for convenience
+    card_w = sc.SIZE_CARD_W
+    card_h = sc.SIZE_CARD_H
+
+    # uppack bounding box of contour
+    x, y, w, h = contour_box
+
+    val_bg_box = np.mean([
+        val[6:26, 6:26], val[card_h-26:card_h-6, card_w-26:card_w-6],
+        val[6:26, card_w-26:card_w-6], val[card_h-26:card_h-6, 6:26]],
+        axis=0).astype('uint8')
+
+    val_center_box = val[y+h/2-10:y+h/2+10, x+w/2-10:x+w/2+10]
+
+    val_diff = cv2.absdiff(val_bg_box, val_center_box)
+    val_mean = np.mean(val_diff)
+    val_std = np.std(val_diff)
+
+    # get a 20x20 hue square from each of the corners of the card, average values
+    hue_bg = np.mean([
+        hue[6:26, 6:26], hue[card_h-26:card_h-6, card_w-26:card_w-6],
+        hue[6:26, card_w-26:card_w-6], hue[card_h-26:card_h-6, 6:26]])
+
+    # get a 12x12 square from the center of the shape, average values
+    hue_center = np.mean(hue[y+h/2-10:y+h/2+10, x+w/2-10:x+w/2+10])
+    
+    # guess texture based on ratio of inside to outside hues
+    hue_ratio = max(hue_bg, hue_center) / min(hue_bg, hue_center)
+
+    if val_mean > 35 or hue_ratio > 5:
+        return sc.PROP_TEXTURE_SOLID
+    elif val_mean > 10:
+        return sc.PROP_TEXTURE_STRIPED
+    elif hue_ratio > 2:
+        return sc.PROP_TEXTURE_STRIPED
+    else:
+        return sc.PROP_TEXTURE_EMPTY
 
 def get_shape_from_contour(contour, contour_box):
     # uppack bounding box of contour
@@ -500,7 +533,7 @@ def get_card_properties_v2(card, debug=False):
     prop_num = get_dropoff([b[2]*b[3] for b in contour_boxes], maxratio=1.2)
     prop_col = get_color_from_hue(hue_crop)
     prop_shp = get_shape_from_contour(contours[0], contour_boxes[0])
-    prop_tex = get_texture_from_hue(hue, contour_boxes[0])
+    prop_tex = get_texture_from_hue_val(hue, val, contour_boxes[0])
 
     if debug:
         pretty_print_properties([(prop_num, prop_col, prop_shp, prop_tex)])
