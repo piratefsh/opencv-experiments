@@ -7,15 +7,13 @@ from myAPI import *
 
 
 class listener_tweeter(StreamListener):
-    def _onconnect(self):
-        print 'Connected! Listening...'
 
     # override on_status to pass data from on_data method of tweepy's StreamListener
     def on_status(self, status):
         print '{} said: "{}"'.format(status.user.screen_name, status.text)
 
         # ignore retweets or tweets from self
-        if status.retweeted or ( status.user.screen_name == 'ProfessorSet' ):
+        if status.retweeted or ( status.user.screen_name.lower() == 'professorset' ):
             return
 
         img_str = None
@@ -26,8 +24,8 @@ class listener_tweeter(StreamListener):
         try:
             tweet_url = re.search(r'https:.*\b', status.text).group(0)
             with_sets_outlined = (False if re.search(r'sets or not', status.text) else True)
-
             text, img_str = solve_tweeted_set(tweet_url, with_sets_outlined=with_sets_outlined)
+            #print text
 
         #ignore tweets with no image
         except AttributeError:
@@ -36,7 +34,7 @@ class listener_tweeter(StreamListener):
             text += '!'*n
 
         response_text = '.@{} {}'.format(status.user.screen_name, text)
-        print response_text
+        #print response_text
 
         try:
             response = api.retweet(id=status.id)
@@ -100,12 +98,15 @@ def solve_tweeted_set(tweet_url, with_sets_outlined=True):
     # scrape tweet HTML string for image url
     soup = BeautifulSoup(tweet_content, 'lxml')
     img_url = soup.find('meta', attrs={'property': 'og:image'})['content']
+    #print img_url
 
     # find Sets
     kwargs = {'path_is_url': True, 'pop_open': False}
     kwargs['draw_contours'] = (True if with_sets_outlined else False)
     kwargs['sets_or_no'] = (False if with_sets_outlined else True)
+    #print "about to play"
     num_sets, initial_img_str = t.play_game(img_url, **kwargs)
+    #print num_sets
 
     # send string with media_data (rather than media) tag because it is base64 encoded
     img_str = 'media_data={}'.format(initial_img_str)
