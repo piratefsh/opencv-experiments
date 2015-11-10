@@ -1,10 +1,7 @@
 import cv2, sys, os
 import cv2.cv as cv
-import sys
 import numpy as np
 import util as util
-import os
-import code
 import set_constants as sc
 
 reload(util)
@@ -12,7 +9,7 @@ reload(util)
 def resize_image(img, new_width=600):
     """Given cv2 image object and maximum dimension, returns resized image such that height or width (whichever is larger) == max dimension"""
     h, w, _ = img.shape
-    
+
     if h > w: img = np.rot90(img)
 
     new_height = int((1.0*h/w)*new_width)
@@ -31,7 +28,7 @@ def get_card_properties(cards, training_set=None):
         texture = get_card_texture(img)
         p = (num, color, shape, texture)
         if None not in p:
-            properties.append(p) 
+            properties.append(p)
     return properties
 
 def pretty_print_properties(properties):
@@ -97,7 +94,7 @@ def transform_card(card, image):
     approximated_poly = get_approx_poly(card, do_rectify=True)
 
     if approximated_poly is None:
-        # could not find card poly 
+        # could not find card poly
         return None
 
     dest = np.array(card_shape, np.float32)
@@ -414,6 +411,8 @@ def get_color_from_hue(hue):
     # get histogram of hue values
     hist,_ = np.histogram(hue, 15, (0, 255))
 
+    print hist
+
     if hist[3]+hist[4] > 1200:
         return sc.PROP_COLOR_GREEN
     elif hist[8]+hist[9] > 30:
@@ -474,14 +473,18 @@ def get_texture_from_hue_val(hue, val, contour_box):
 
     # get a 12x12 square from the center of the shape, average values
     hue_center = np.mean(hue[y+h/2-10:y+h/2+10, x+w/2-10:x+w/2+10])
-    
+
     # guess texture based on ratio of inside to outside hues
     hue_ratio = max(hue_bg, hue_center) / min(hue_bg, hue_center)
+
+    print "{}\t{}\t{}".format(val_std, hue_ratio, val_mean)
 
     if val_mean > 35 or hue_ratio > 5:
         return sc.PROP_TEXTURE_SOLID
     elif val_mean > 10:
         return sc.PROP_TEXTURE_STRIPED
+    elif val_mean < 3:
+        return sc.PROP_TEXTURE_EMPTY
     elif hue_ratio > 2:
         return sc.PROP_TEXTURE_STRIPED
     else:
@@ -529,8 +532,9 @@ def get_card_properties_v2(card, debug=False):
     x, y, w, h = contour_boxes[0]
     hue_crop = hue[y:y+h, x:x+w]
 
-    #prop_num = get_number_from_contours(contour_areas, contour_centers)
-    prop_num = get_dropoff([b[2]*b[3] for b in contour_boxes], maxratio=1.2)
+    # no more than 3 shapes per card
+    prop_num_init = get_dropoff([b[2]*b[3] for b in contour_boxes], maxratio=1.2)
+    prop_num = ( prop_num_init if prop_num_init < 3 else 3 )
     prop_col = get_color_from_hue(hue_crop)
     prop_shp = get_shape_from_contour(contours[0], contour_boxes[0])
     prop_tex = get_texture_from_hue_val(hue, val, contour_boxes[0])
@@ -549,6 +553,6 @@ def get_cards_properties(cards):
     for card in cards:
         p = get_card_properties_v2(card)
         if None not in p:
-            properties.append(p) 
+            properties.append(p)
 
     return properties
