@@ -5,8 +5,11 @@ import cv2.cv as cv
 from set_test import game
 from collections import Counter
 import numpy as np
-import base64, Image, StringIO
+import base64, StringIO
+from PIL import Image
 
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_IMAGE_OUT_DIR = os.path.join(THIS_DIR, 'images', 'user_images', 'output')
 
 def test():
     # 3 cards on flat table
@@ -96,7 +99,8 @@ def main():
 def play_game(path_in, path_is_url=False, printall=False, \
               draw_contours=True, resize_contours=True, \
               draw_rects=False, sets_or_no=False, \
-              pop_open=True):
+              pop_open=True, save_image=False, \
+              output_dir=DEFAULT_IMAGE_OUT_DIR):
     """Takes in an image path (to local file or onlin), finds all sets, and pretty prints them to screen.
     if printall - prints the identities of all cards in the image
     if draw_contours - outlines the cards belonging to each set
@@ -197,8 +201,10 @@ def play_game(path_in, path_is_url=False, printall=False, \
     mystr = output.getvalue()
     output.close()
 
-    # don't write image to file, dude....because we are badass Tweepy hackers
-    #cv2.imwrite('tmp.jpeg', final_img)
+    if save_image:
+        out_file_name = 'OUTPUT_{0}'.format(os.path.basename(path_in))
+        final_out_path = os.path.join(output_dir, out_file_name)
+        cv2.imwrite(final_out_path, final_img)
 
     # encode image string to base64 and safe-encode it for Twitter upload request
     final = requests.utils.quote(base64.b64encode(mystr), safe='')
@@ -211,5 +217,3 @@ def play_game(path_in, path_is_url=False, printall=False, \
     # size is 89867.1532847 bytes
 
     return (num_sets, final)
-
-

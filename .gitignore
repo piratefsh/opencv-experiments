@@ -65,3 +65,6 @@ target/
 .venv
 images/cards
 .DS_Store
+
+**/images/user_images/*/*.*
+!**/images/user_images/*/*.keep
