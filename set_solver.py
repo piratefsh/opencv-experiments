@@ -1,13 +1,15 @@
-import cv2, sys, os
-import cv2.cv as cv
-import sys
-import numpy as np
-import util as util
 import os
+import sys
+
+import cv2
+#from cv2 import cv
+import numpy as np
+
+import util as util
 import code
 import set_constants as sc
 
-reload(util)
+#reload(util)
 
 def resize_image(img, new_width=600):
     """Given cv2 image object and maximum dimension, returns resized image such that height or width (whichever is larger) == max dimension"""
@@ -35,9 +37,9 @@ def get_card_properties(cards, training_set=None):
 def pretty_print_properties(properties):
     for p in properties:
         num, color, shape, texture = p
-        print '%d %s %s %s' % (num, sc.PROP_COLOR_MAP[color],
+        print('%d %s %s %s' % (num, sc.PROP_COLOR_MAP[color],
                                sc.PROP_SHAPE_MAP[shape],
-                               sc.PROP_TEXTURE_MAP[texture])
+                               sc.PROP_TEXTURE_MAP[texture]))
 
 def detect_cards(img, draw_rects=False, return_contours=False):
     if img is None:
@@ -52,20 +54,21 @@ def detect_cards(img, draw_rects=False, return_contours=False):
     transformed_cards = transform_cards(img, contours, num_cards, draw_rects=draw_rects)
 
     if return_contours:
-        return (contours, transformed_cards)
+        return contours, transformed_cards
     else:
-        return (transformed_cards)
+        return transformed_cards
 
 def transform_cards(img, contours, num, draw_rects=False):
     cards = []
-    for i in xrange(num):
+    for i in range(num):
         if i > len(contours) - 1:
             continue
         card = contours[i]
 
         # get bounding rectangle
         rect = cv2.minAreaRect(card)
-        r = cv.BoxPoints(rect)
+        #r = cv.BoxPoints(rect)
+        r = cv2.boxPoints(rect)
 
         # convert to ints
         r = [(int(x), int(y)) for x, y in r]
@@ -76,7 +79,7 @@ def transform_cards(img, contours, num, draw_rects=False):
         try:
             transformed = transform_card(card, img)
         except:
-            # print 'Error processing card!! :o'
+            # print('Error processing card!! :o')
             continue
 
         if transformed is not None:
@@ -134,7 +137,7 @@ def get_approx_poly(card, do_rectify=True, image=None):
 
 
 def find_contours(bin_img, num=-1, return_area=False):
-    contours, hierarchy = cv2.findContours(
+    _, contours, hierarchy = cv2.findContours(
         bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
@@ -164,11 +167,13 @@ def get_card_color(card):
     if card is None:
         return None
 
-    blue = [pix[0] for row in card for pix in row]
-    green = [pix[1] for row in card for pix in row]
-    red = [pix[2] for row in card for pix in row]
+    #blue = [pix[0] for row in card for pix in row]
+    #green = [pix[1] for row in card for pix in row]
+    #red = [pix[2] for row in card for pix in row]
+    #blue, green, red = zip(*(pix for row in card for pix in row)) 
 
-    bgr = (min(blue), min(green), min(red))
+    bgr = [min(_) for _ in zip(*(pix for row in card for pix in row))]
+    #bgr = (min(blue), min(green), min(red))
     b, g, r = bgr
     # if mostly green
     if max(bgr) == g:
@@ -341,18 +346,18 @@ def get_binary_from_hsv(card):
     hsv = cv2.cvtColor(card, cv2.COLOR_BGR2HSV)
 
     # separate hue, saturation, and value into three images
-    hue, sat, val = [ np.array( [[col[i] for col in row] for row in hsv] ) \
-        for i in xrange(3) ]
+    hue, sat, val = [np.array( [[col[i] for col in row] for row in hsv] )
+                     for i in range(3)]
 
     # get binary representation of saturation image
     # higher threshold = less white
-    _, bin_sat = cv2.threshold(np.array(sat), thresh=55, maxval=255, \
+    _, bin_sat = cv2.threshold(np.array(sat), thresh=55, maxval=255,
         type=cv2.THRESH_BINARY)
     #bin_sat = cv2.GaussianBlur(bin_sat, ksize=(5, 5), sigmaX=0)
 
     # get binary representation of value image
     # higher threshold = more white
-    _, bin_val = cv2.threshold(np.array(val), thresh=140, maxval=255, \
+    _, bin_val = cv2.threshold(np.array(val), thresh=140, maxval=255,
         type=cv2.THRESH_BINARY_INV)
 
     bin_sat_val = cv2.bitwise_or(bin_sat, bin_val)
@@ -404,13 +409,13 @@ def get_contour_info(bin_img, remove_dups=True, discard=True, num=4):
                 contour_boxes.pop(i)
                 contour_centers.pop(i)
             else:
-                i = i+1
+                i += 1
 
     return contours, contour_areas, contour_boxes, contour_centers
 
 def get_color_from_hue(hue):
     # get histogram of hue values
-    hist,_ = np.histogram(hue, 15, (0, 255))
+    hist, _ = np.histogram(hue, 15, (0, 255))
 
     if hist[3]+hist[4] > 1200:
         return sc.PROP_COLOR_GREEN
@@ -441,7 +446,8 @@ def get_texture_from_hue(hue, contour_box):
         hue[0:20, card_w-20:card_w], hue[card_h-20:card_h, 0:20]])
 
     # get a 20x20 square from the center of the shape, average values
-    hue_center = np.mean(hue[y+h/2-10:y+h/2+10, x+w/2-10:x+w/2+10])
+    hue_center = np.mean(hue[int(y+h/2-10):int(y+h/2+10),
+                             int(x+w/2-10):int(x+w/2+10)])
 
     # guess texture based on ratio of inside to outside hues
     hue_ratio = max(hue_bg, hue_center) / min(hue_bg, hue_center)

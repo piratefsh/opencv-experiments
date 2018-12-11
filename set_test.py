@@ -1,10 +1,11 @@
 import random
 import itertools
 
+
 class game:
     def __init__(self, cards=None):
         if not cards:
-            self.cards = [self.random_card() for _ in xrange(12)]
+            self.cards = [self.random_card() for _ in range(12)]
         else:
             self.cards = cards
 
@@ -13,7 +14,7 @@ class game:
 
     def random_card(self):
         """Return random tuple (color, shape, number, texture)"""
-        return tuple( random.choice([1,2,3]) for _ in xrange(4) )
+        return tuple( random.choice([1,2,3]) for _ in range(4) )
 
     def is_set(self, x, y, z):
         """Returns true if card trio is a set at every position based on sum mod 3, which is only 0 IFF all same or all different"""
@@ -27,9 +28,10 @@ class game:
             if self.is_set(x[1], y[1], z[1]):
                 cards_idx = (x[0], y[0], z[0])
                 if idx:
-                    sets.append( map(lambda x: (x, self.cards[x]), cards_idx) )
+                    sets.append( [(i, self.cards[i]) for i in cards_idx] )
                 else:
-                    sets.append( map(lambda x: self.cards[x], cards_idx) )
+                    sets.append( [self.cards[i] for i in cards_idx] )
+
         return sets
 
     def play(self, idx=False):
@@ -39,4 +41,5 @@ class game:
         return False
 
 def test(n):
-    return '{}%'.format(sum( game().play() for _ in xrange(n) )/float(n) * 100.0)
+    #return '{}%'.format( sum( game().play() for _ in range(n) ) / n * 100.0)
+    return '{}%'.format( sum( bool(game().play()) for _ in range(n) ) / n * 100.0)

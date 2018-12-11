@@ -2,12 +2,13 @@
 # Copyright 2009-2010 Joshua Roesslein
 # See LICENSE for details.
 
-from __future__ import print_function
+#from __future__ import print_function
 
 import time
 import re
 
-from six.moves.urllib.parse import quote
+#from six.moves.urllib.parse import quote
+from urllib.parse import quote
 import requests
 
 import logging

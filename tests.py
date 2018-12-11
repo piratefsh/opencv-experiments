@@ -1,12 +1,17 @@
-import cv2, util, requests, os
+import base64
+from collections import Counter
+from io import BytesIO
+import os
+import requests
+
+import cv2
+import numpy as np
+from PIL import Image
+
 import set_solver as s
 import set_constants as sc
-import cv2.cv as cv
 from set_test import game
-from collections import Counter
-import numpy as np
-import base64, StringIO
-from PIL import Image
+import util
 
 
 def test():
@@ -27,13 +32,16 @@ def test():
     res3 = s.detect_cards(cards_3)
     assert res3 is not None and len(res3) == 3
 
-    for i in range(len(res5)):
-        c = res5[i]
+    try:
+        os.mkdir('images/cards')
+    except(FileExistsError):
+        pass
+
+    for i, c in enumerate(res5):
         # util.show(c, 'card')
         cv2.imwrite('images/cards/card-5-%d.jpg' % i, c)
 
-    for i in range(len(res3)):
-        c = res3[i]
+    for i, c in enumerate(res3):
         # util.show(c, 'card')
         cv2.imwrite('images/cards/card-3-%d.jpg' % i, c)
 
@@ -41,22 +49,26 @@ def test():
     for link in os.listdir('images/cards'):
         img = cv2.imread('images/cards/%s' % link)
         test_props(img)
-    print 'tests pass'
+    print('tests pass')
 
 
-def test_props(img):
+def test_props(img, pop_open=False, out='images/test_out.jpg'):
     color = sc.PROP_COLOR_MAP[s.get_card_color(img)]
     shape = sc.PROP_SHAPE_MAP[s.get_card_shape(img, s.get_training_set())]
     num = s.get_card_number(img)
     texture = sc.PROP_TEXTURE_MAP[s.get_card_texture(img)]
 
-    print '%d %s %s %s' % (num, color, shape, texture)
+    print('%d %s %s %s' % (num, color, shape, texture))
     print('---')
 
-    util.show(img)
+    if pop_open:
+        util.show(img)
+    else:
+        cv2.imwrite(out, img)
 
 
-def main():
+
+def main(pop_open=False, out='images/test_out.jpg'):
     # 3 of the 12 set that's bad
     cards_3_bad = cv2.imread('images/set-3-bad.jpg')
     thresh_3bad = s.get_binary(cards_3_bad)
@@ -64,16 +76,21 @@ def main():
     assert res3bad is not None and len(res3bad) == 3
 
     # 12 cards
-    cards_12 = cv2.imread('images/set-12-random-2sets-sm.jpg')
+    #cards_12 = cv2.imread('images/set-12-random-2sets-sm.jpg')
+    cards_12 = cv2.imread('images/set-12-random-2sets.jpg')
 
     thresh_12bad = s.get_binary(cards_12)
     res12bad = s.detect_cards(cards_12, draw_rects=False)
-    util.show(cards_12)
+    
+    if pop_open:
+        util.show(cards_12)
+    else:
+        cv2.imwrite(out, cards_12)
+
 
     # Subset of 3, with the 1 problem card
     cards = res12bad
-    for i in range(len(cards)):
-        card = cards[i]
+    for i, card in enumerate(cards):
         # test_props(card)
         cv2.imwrite('images/cards/card-12-%02d.jpg' % i, card)
 
@@ -84,39 +101,41 @@ def main():
     sets = g.play(True)
 
     if sets:
-        print '\nFound sets:'
+        print('\nFound sets:')
         for st in sets:
             just_props = [e for i, e in st]
-            print just_props
+            print(just_props)
             s.pretty_print_properties(just_props)
             print('---')
     else:
-        print 'no sets :('
+        print('no sets :(')
 
-    print 'tests pass'
+    print('tests pass')
 
 
-def play_game(path_in, path_is_url=False, printall=False, \
-              draw_contours=True, resize_contours=True, \
-              draw_rects=False, sets_or_no=False, \
-              pop_open=True):
-    """Takes in an image path (to local file or onlin), finds all sets, and pretty prints them to screen.
+def play_game(path_in, path_is_url=False, printall=False,
+              draw_contours=True, resize_contours=True,
+              draw_rects=False, sets_or_no=False,
+              pop_open=True, save_as=None):
+    """
+    Takes in an image path (to local file or online), finds all sets, and pretty prints them to screen.
     if printall - prints the identities of all cards in the image
     if draw_contours - outlines the cards belonging to each set
     if resize_contours - enlarges contours for cards belonging to multiple sets to avoid overlay
     if draw_rects - draws box rects around cards belonging to each set
-    if sets_or_no - outlines the image in green or red, depending on whether there are any sets present"""
+    if sets_or_no - outlines the image in green or red, depending on whether there are any sets present
+    if save_as - also saves to file
+    """
     if path_is_url:
         # parse image string directly into numpy array
         img_str = requests.get(path_in).content
         nparr = np.fromstring(img_str, np.uint8)
-        img = cv2.imdecode(nparr, cv2.CV_LOAD_IMAGE_COLOR)
-
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     else:
         img = cv2.imread(path_in)
 
     img = s.resize_image(img, 600)
-    util.show(img)
+    if pop_open: util.show(img)
 
     contours, detected = s.detect_cards(img, draw_rects=False, return_contours=True)
     props = s.get_cards_properties(detected)
@@ -145,7 +164,7 @@ def play_game(path_in, path_is_url=False, printall=False, \
             color = COLORS[i]
             st_indices, st_props = zip(*st)
             s.pretty_print_properties(st_props)
-            print ('---')
+            print('---')
 
             if draw_contours or draw_rects:
                 winning_contours = [ contours[c] for c in st_indices ]
@@ -169,11 +188,11 @@ def play_game(path_in, path_is_url=False, printall=False, \
                     winning_rects = [ cv2.minAreaRect(c) for c in winning_contours ]
                     for rect in winning_rects:
                         # convert to ints
-                        r = [ (int(x), int(y)) for x,y in cv.BoxPoints(rect) ]
+                        r = [ (int(x), int(y)) for x,y in cv2.boxPoints(rect) ]
                         cv2.rectangle(img, r[0], r[2], color)
 
     else:
-        print 'no sets :('
+        print('no sets :(')
 
     if sets_or_no:
         height, width, _ = img.shape
@@ -183,28 +202,30 @@ def play_game(path_in, path_is_url=False, printall=False, \
         # indices 0 or 1 correspond to bool for if no sets (BGR for red) or sets (green)
         BORDER_COLORS = [ (19,19,214), (94,214,19) ]
 
-        img_outlined = cv2.copyMakeBorder(img, border_h, border_h, \
-                                          border_w, border_w, \
+        img_outlined = cv2.copyMakeBorder(img,
+                                          border_h, border_h,
+                                          border_w, border_w,
                                           cv2.BORDER_CONSTANT,
                                           value = BORDER_COLORS[bool(sets)])
 
-    processed_img = (img_outlined if sets_or_no else img)
+    processed_img = img_outlined if sets_or_no else img
 
     final_img = processed_img #s.resize_image(processed_img, 800)
 
     if pop_open: util.show(final_img)
 
-    num_sets = ( len(sets) if sets else 0 )
+    num_sets = len(sets) if sets else 0
 
     # convert image array to string representing JPEG of image (in RGB)
     image = Image.fromarray( cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB) )
-    output = StringIO.StringIO()
+    output = BytesIO()
     image.save(output, format='JPEG')
     mystr = output.getvalue()
     output.close()
 
     # don't write image to file, dude....because we are badass Tweepy hackers
-    #cv2.imwrite('tmp.jpeg', final_img)
+    if save_as is not None:
+        cv2.imwrite(save_as, final_img)
 
     # encode image string to base64 and safe-encode it for Twitter upload request
     final = requests.utils.quote(base64.b64encode(mystr), safe='')
@@ -216,6 +237,4 @@ def play_game(path_in, path_is_url=False, printall=False, \
     # length is 123932
     # size is 89867.1532847 bytes
 
-    return (num_sets, final)
-
-
+    return num_sets, final
