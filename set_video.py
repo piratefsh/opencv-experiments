@@ -1,6 +1,9 @@
-import set_solver as ss
-import cv2, util
+import cv2
 import numpy as np
+
+import set_solver as ss
+import util
+
 
 # open video feed
 # solve for every frame

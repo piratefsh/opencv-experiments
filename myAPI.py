@@ -1,6 +1,7 @@
+from tweepy import API
 #from tweepy.binder import bind_api
 from mybinder import my_bind_api
-from tweepy import API
+
 
 class myAPI(API):
     @staticmethod

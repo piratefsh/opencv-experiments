@@ -1,9 +1,11 @@
-import cv2
-import cv2.cv as cv
 import sys
+
+import cv2
+#import cv2.cv as cv
 import numpy as np 
 
 from util import show, destroy
+
 
 CARD_SIZE_WIDTH = 64 
 CARD_SIZE_HEIGHT = 89

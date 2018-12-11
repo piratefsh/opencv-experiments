@@ -1,6 +1,8 @@
+import random
+
 import cv2 
 import numpy as np
-import random
+
 
 def show(img, window_name='main'):
     # destroy existing window
@@ -40,7 +42,7 @@ def rectify(h):
 # draw contour on empty image
 def draw_contour(c, i, h=500, w=300):
     dest = np.zeros((h,w), np.float32)
-    cv2.drawContours(dest, c, i, 255, cv2.cv.CV_FILLED)
+    cv2.drawContours(dest, c, i, 255, cv2.FILLED)
     return dest
 
 def resize(src, shape):
@@ -86,7 +88,7 @@ def random_color_palette(n, BGR=True):
     hue = random.random()
     l_hues = [hue]
 
-    for i in xrange(n-1):
+    for i in range(n-1):
         # generate evenly distributed hues by random walk using the golden ratio!
         # (mod 1, to stay within hue space)
         hue += GOLDEN_RATIO_INVERSE
